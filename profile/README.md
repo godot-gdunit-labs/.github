@@ -47,7 +47,7 @@ Continuous Integration tool for seamless GdUnit test automation in GitHub workfl
 
 ## Getting Started
 
-[Documentaion](https://mikeschulze.github.io/gdUnit4/latest/)
+[Documentaion](https://godot-gdunit-labs.github.io/gdUnit4/latest/)
 
 ## Contributing
 
