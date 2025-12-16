@@ -1,4 +1,20 @@
-# Godot GdUnit Labs
+# 
+
+<p align="center">
+  <img src="gdunit-labs.png" alt=""  width="40%"></br>
+  <h1 align="center">Godot GdUnit Labs</h1>
+</p>
+
+
+## About Godot GdUnit Labs
+
+Godot GdUnit Labs is an open-source initiative dedicated to providing comprehensive, high-performance testing solutions for the Godot Game Engine.
+Our mission is to enhance game development quality through robust, easy-to-use unit testing frameworks that support GDScript and C# programming languages and integrate seamlessly with modern development workflows.
+We focus on:
+- Developing cutting-edge testing tools
+- Supporting both GDScript and C# testing
+- Providing seamless CI/CD integration
+- Improving game development reliability
 
 ## Projects
 
