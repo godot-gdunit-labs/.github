@@ -131,3 +131,7 @@ jobs:
       - name: 'Check GDScript formatting'
         if: ${{ !cancelled() && steps.collect.outcome == 'success' }}
         run: node "$CENTRAL_DIR/scripts/run.mjs" gdformat "$REPO_DIR" "$LIST_DIR"
+
+      - name: 'Write the summary'
+        if: ${{ !cancelled() && steps.collect.outcome == 'success' }}
+        run: node "$CENTRAL_DIR/scripts/run.mjs" summary "$REPO_DIR" "$LIST_DIR"

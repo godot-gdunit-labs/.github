@@ -24,7 +24,21 @@ const GROUPS = {
 GROUPS.editorconfig = (file) => ["yaml", "markdown", "json", "js", "xml"].some((group) => GROUPS[group](file));
 GROUPS.gdformat = GROUPS.gdscript;
 
+const CHECK_TITLES = {
+  editorconfig: "Line endings, final newline and whitespace",
+  yaml: "YAML",
+  workflows: "GitHub Actions workflows",
+  markdown: "Markdown",
+  json: "JSON syntax",
+  xml: "XML syntax",
+  js: "JavaScript",
+  gdscript: "GDScript lint",
+  gdformat: "GDScript format",
+};
+
 let errorCount = 0;
+let warningCount = 0;
+const findingsByFile = new Map();
 
 const escapeData = (value) => String(value).replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
 const escapeProperty = (value) => escapeData(value).replace(/:/g, "%3A").replace(/,/g, "%2C");
@@ -36,7 +50,10 @@ const fromArgument = (file) => file.replace(/^\.\//, "");
 function report(level, file, line, column, message) {
   if (level === "error") {
     errorCount++;
+  } else {
+    warningCount++;
   }
+  findingsByFile.set(file, (findingsByFile.get(file) ?? 0) + 1);
   const properties = [`file=${escapeProperty(file)}`, `line=${toLine(line)}`];
   if (column) {
     properties.push(`col=${toLine(column)}`);
@@ -249,6 +266,54 @@ function checkGdformat(repoDir, files) {
   }
 }
 
+const MAX_SUMMARY_FILES = 50;
+
+const isPrintable = (char) => char.charCodeAt(0) >= 0x20 && char !== "`";
+const asCode = (value) => `\`${[...String(value)].filter(isPrintable).join("").replace(/\|/g, "\\|").slice(0, 200)}\``;
+
+function readResult(listDir, command) {
+  try {
+    return JSON.parse(readFileSync(path.join(listDir, `${command}.result.json`), "utf8"));
+  } catch {
+    return undefined;
+  }
+}
+
+function writeSummary(listDir) {
+  const lines = ["## Formatting checks", "", "| Check | Files | Errors | Warnings | Result |", "| --- | ---: | ---: | ---: | :---: |"];
+  const totals = new Map();
+  for (const [command, title] of Object.entries(CHECK_TITLES)) {
+    const result = readResult(listDir, command);
+    if (!result) {
+      lines.push(`| ${title} | | | | not run |`);
+      continue;
+    }
+    const status = result.errors > 0 ? "❌" : result.warnings > 0 ? "⚠️" : result.files > 0 ? "✅" : "no files";
+    lines.push(`| ${title} | ${result.files} | ${result.errors} | ${result.warnings} | ${status} |`);
+    for (const [file, count] of Object.entries(result.findings)) {
+      totals.set(file, (totals.get(file) ?? 0) + count);
+    }
+  }
+  if (totals.size > 0) {
+    const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    lines.push("", `<details><summary>Findings in ${totals.size} file(s)</summary>`, "", "| File | Findings |", "| --- | ---: |");
+    for (const [file, count] of sorted.slice(0, MAX_SUMMARY_FILES)) {
+      lines.push(`| ${asCode(file)} | ${count} |`);
+    }
+    if (sorted.length > MAX_SUMMARY_FILES) {
+      lines.push("", `${sorted.length - MAX_SUMMARY_FILES} more file(s), see the job log.`);
+    }
+    lines.push("", "</details>");
+  }
+  lines.push("", "GitHub shows only the first annotations of each step, the job log lists all findings.", "");
+  const summary = lines.join("\n");
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    writeFileSync(process.env.GITHUB_STEP_SUMMARY, summary, { flag: "a" });
+  } else {
+    process.stdout.write(summary);
+  }
+}
+
 const CHECKS = {
   yaml: checkYaml,
   workflows: checkWorkflows,
@@ -267,6 +332,8 @@ const listDir = path.resolve(listArgument);
 
 if (command === "collect") {
   collect(repoDir, listDir);
+} else if (command === "summary") {
+  writeSummary(listDir);
 } else if (CHECKS[command]) {
   const files = JSON.parse(readFileSync(path.join(listDir, `${command}.json`), "utf8"));
   if (files.length === 0) {
@@ -275,6 +342,8 @@ if (command === "collect") {
     await CHECKS[command](repoDir, files);
     console.log(`${command}: ${files.length} file(s) checked, ${errorCount} error(s).`);
   }
+  const result = { files: files.length, errors: errorCount, warnings: warningCount, findings: Object.fromEntries(findingsByFile) };
+  writeFileSync(path.join(listDir, `${command}.result.json`), JSON.stringify(result));
 } else {
   throw new Error(`Unknown command: ${command}`);
 }
