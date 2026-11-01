@@ -1,15 +1,13 @@
 name: formatting-checks
 
 on:  # yamllint disable-line rule:truthy
-  workflow_call:
-    inputs:
-      ignore:
-        description: 'Additional gitignore-style glob patterns (one per line) of files to skip'
-        type: string
-        required: false
-        default: ''
+  pull_request:
 
 permissions: {}
+
+concurrency:
+  group: formatting-checks-${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 env:
   ACTIONLINT_VERSION: '1.7.12'
@@ -95,7 +93,7 @@ jobs:
       - name: 'Collect the files to check'
         id: collect
         env:
-          IGNORE_PATTERNS: ${{ inputs.ignore }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
         run: node "$CENTRAL_DIR/scripts/run.mjs" collect "$REPO_DIR" "$LIST_DIR"
 
       - name: 'Check line endings, final newline and whitespace'

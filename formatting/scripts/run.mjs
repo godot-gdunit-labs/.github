@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
@@ -68,9 +68,18 @@ function* chunks(files) {
   }
 }
 
+function readRepositoryIgnore() {
+  const name = process.env.REPOSITORY_NAME ?? "";
+  if (!/^[A-Za-z0-9._-]+$/.test(name) || /^\.+$/.test(name)) {
+    throw new Error(`Invalid repository name: ${name}`);
+  }
+  const file = centralFile(path.join("ignore", `${name}.txt`));
+  return existsSync(file) ? readFileSync(file, "utf8") : "";
+}
+
 function readIgnorePatterns() {
   const defaults = readFileSync(centralFile("default-ignore.txt"), "utf8");
-  return `${defaults}\n${process.env.IGNORE_PATTERNS ?? ""}`
+  return `${defaults}\n${readRepositoryIgnore()}`
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith("#"));
