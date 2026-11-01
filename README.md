@@ -25,6 +25,7 @@ The repositories need no workflow file of their own.
 
 Only files tracked by git are checked. Files matching [`default-ignore.txt`](formatting/default-ignore.txt), such as `node_modules` or `.idea`, are skipped.
 Every check runs even if an earlier one fails, and each finding is shown as an annotation on the changed file in the pull request.
+The job summary lists the checked files, errors and warnings of each check and the files with findings.
 
 ### Enabling the Check
 
